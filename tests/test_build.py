@@ -118,7 +118,7 @@ class _FakeSession:
         raise AssertionError(f"unexpected request {url}")
 
 
-def test_lookup_chain_without_api_key():
+def test_lookup_chain():
     p = places.lookup(_FakeSession(), "Tandoori", "https://maps.app.goo.gl/abc")
     assert p.lat == 60.1853484
     # The preview data (Google's own panel) wins over the page's meta tags.

@@ -124,7 +124,6 @@ def main(argv: list[str] | None = None) -> int:
     cache_file = args.cache / "places.json"
     img_cache = args.cache / "images"
     cache = {} if args.refresh else load_cache(cache_file)
-    api_key = os.environ.get("GOOGLE_MAPS_API_KEY") or None
     session = places.new_session()
     now = time.time()
 
@@ -135,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
         stale = not entry or now - entry.get("fetched_at", 0) > CACHE_MAX_AGE
         if stale and not args.offline:
             log.info("Looking up %s", row["name"])
-            p = places.lookup(session, row["name"], url, api_key)
+            p = places.lookup(session, row["name"], url)
             entry = {**p.to_dict(), "fetched_at": now}
             # Download the photo now so the cache keeps a copy even if the URL expires.
             if p.image_url:
@@ -172,7 +171,6 @@ def main(argv: list[str] | None = None) -> int:
             "lng": entry.get("lng"),
             "url": url,
             "image": f"images/{image_file}" if image_file and (img_cache / image_file).exists() else None,
-            "imageCredit": entry.get("image_credit"),
             "tags": [t.strip() for t in (row.get("tags") or "").split(";") if t.strip()],
             "category": (entry.get("categories") or [None])[0],
             "rating": entry.get("rating"),

@@ -55,26 +55,22 @@ restaurants.csv ──► scripts/build.py ────────────�
 ### Where details come from (in priority order)
 
 1. **CSV override columns** — always win.
-2. **Google Places API (New)** — used only when the repository secret
-   `GOOGLE_MAPS_API_KEY` is set. Most reliable; gives formatted address and photos.
-   The free monthly quota easily covers a directory of this size since results are
-   cached.
-3. **Google Maps place page** — without a key, the build opens the place page the short
+2. **Google Maps place page** — the build opens the place page the short
    link resolves to, then follows the `/maps/preview/place` data link in its `<head>`.
    That JSON is what Google's own side panel shows: address, categories, rating,
    phone, website and photos. It is undocumented and positional, so each field is
    read defensively; if Google changes it, only the missing fields fall back.
    (The page's own Open Graph tags are also read, but Google currently fills them
    with generic "Google Maps" text.)
-4. **OpenStreetMap Nominatim** — reverse-geocodes the coordinates when no address was
+3. **OpenStreetMap Nominatim** — reverse-geocodes the coordinates when no address was
    found. Rate-limited to 1 request/second as Nominatim's policy requires.
-5. **Placeholder** — if no photo is available, the card shows a generated pattern tile.
+4. **Placeholder** — if no photo is available, the card shows a generated pattern tile.
 
 Coordinates always come from the resolved Google Maps URL (`!3d<lat>!4d<lng>`), so the
 map works even when every other source fails.
 
 Tested on 29 October 2026: all five sample restaurants came back with address,
-category, Google rating, phone, website and photo through source 3. OpenStreetMap
+category, Google rating, phone, website and photo through source 2. OpenStreetMap
 alone picked a neighbouring building's address for two of them, which is why it is
 only the last resort.
 
@@ -117,14 +113,13 @@ tests/                       unit tests for URL parsing and CSV handling
 - [x] Write this plan
 - [x] CSV reader with flexible headers and override columns
 - [x] Short-link resolver and Google Maps URL parser (name, place id, lat/lng)
-- [x] Detail lookup chain: Places API → place page → Nominatim → placeholder
+- [x] Detail lookup chain: Google Maps place data → Nominatim → placeholder
 - [x] Image download, resize to 640px WebP, cache
 - [x] Page design: search, city filter, near-me sort, list + map
 - [x] GitHub Actions workflow: build on push to `main`, deploy to Pages, weekly refresh
 - [x] Unit tests for parsing; offline build mode for local preview
 - [x] Cards show category, Google rating, phone and website when available
 - [ ] Push to `zslabs-fi/eathalal` and enable Pages (Settings → Pages → Source: GitHub Actions)
-- [ ] Optional: add `GOOGLE_MAPS_API_KEY` secret for reliable lookups
 
 ### Phase 2 — nice to have
 
@@ -147,7 +142,7 @@ python -m http.server -d _site 8000
 
 | Risk | Mitigation |
 |------|------------|
-| Google changes the place page and scraping stops working | Cache keeps old results; API key path; CSV overrides; Nominatim fallback for address |
+| Google changes the place page and scraping stops working | Cache keeps old results; CSV overrides; Nominatim fallback for address; build log flags restaurants with missing details |
 | Google blocks CI requests | Same as above; build never fails because one lookup fails |
 | Photo licensing | Photos come from Google's listing for the business; each card links back to Google Maps. Owners can request removal, and `ImageUrl` can replace any photo |
 | Short link points to a search instead of a place | Build logs a warning and uses whatever coordinates are in the URL |

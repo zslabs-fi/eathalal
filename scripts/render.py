@@ -47,7 +47,6 @@ def render_card(r: dict) -> str:
         photo = f'<img src="{e(r["image"])}" alt="" loading="lazy" decoding="async" width="640" height="480">'
     else:
         photo = f'<span class="card-initial" aria-hidden="true">{e(r["name"][:1].upper())}</span>'
-    credit = f' title="Photo: {e(r["imageCredit"])}"' if r.get("imageCredit") else ""
     tags = "".join(f"<li>{e(t)}</li>" for t in r["tags"])
     tags_html = f'<ul class="card-tags" aria-label="Tags">{tags}</ul>' if tags else ""
     address = (
@@ -77,7 +76,7 @@ def render_card(r: dict) -> str:
     links_html = "".join(links)
     lat = "" if r.get("lat") is None else f' data-lat="{r["lat"]}" data-lng="{r["lng"]}"'
     return f"""<li class="card" id="r-{e(r['id'])}" data-id="{e(r['id'])}" data-city="{e(r.get('city'))}" data-search="{e(search_text(r))}"{lat}>
-  <a class="card-photo{' card-photo--empty' if not r.get('image') else ''}" href="{e(r['url'])}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"{credit}>{photo}</a>
+  <a class="card-photo{' card-photo--empty' if not r.get('image') else ''}" href="{e(r['url'])}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">{photo}</a>
   <div class="card-body">
     <h3 class="card-name"><a href="{e(r['url'])}" target="_blank" rel="noopener">{e(r['name'])}</a></h3>
     {meta_html}

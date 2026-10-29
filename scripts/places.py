@@ -1,9 +1,10 @@
 """Look up restaurant details from a Google Maps link.
 
 Lookup chain (first hit wins for each field):
-  1. Google Places API (New)   -- only when an API key is provided
-  2. Public Google Maps page    -- Open Graph meta tags
-  3. OpenStreetMap Nominatim    -- reverse geocoding, address only
+  1. Public Google Maps place page and the place-panel data it links to
+  2. OpenStreetMap Nominatim    -- reverse geocoding, address only
+
+No API keys or Google Cloud account are needed.
 
 Coordinates always come from the resolved Google Maps URL itself.
 """
@@ -40,7 +41,6 @@ class Place:
     feature_id: str | None = None
     address: str | None = None
     image_url: str | None = None
-    image_credit: str | None = None
     categories: list[str] | None = None
     rating: float | None = None
     reviews: int | None = None
@@ -274,69 +274,6 @@ def fetch_place_page(session: requests.Session, place: Place) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Google Places API (New)
-# ---------------------------------------------------------------------------
-
-PLACES_SEARCH = "https://places.googleapis.com/v1/places:searchText"
-
-
-def fetch_places_api(session: requests.Session, key: str, place: Place, fallback_name: str) -> dict:
-    body: dict = {"textQuery": place.name or fallback_name, "maxResultCount": 1, "languageCode": "en"}
-    if place.lat is not None:
-        body["locationBias"] = {
-            "circle": {"center": {"latitude": place.lat, "longitude": place.lng}, "radius": 300.0}
-        }
-    r = session.post(
-        PLACES_SEARCH,
-        json=body,
-        headers={
-            "X-Goog-Api-Key": key,
-            "X-Goog-FieldMask": (
-                "places.displayName,places.formattedAddress,places.location,places.photos,"
-                "places.rating,places.userRatingCount,places.websiteUri,places.internationalPhoneNumber,"
-                "places.primaryTypeDisplayName"
-            ),
-        },
-        timeout=TIMEOUT,
-    )
-    r.raise_for_status()
-    places = r.json().get("places") or []
-    if not places:
-        return {}
-    hit = places[0]
-    out: dict = {
-        "name": (hit.get("displayName") or {}).get("text"),
-        "address": hit.get("formattedAddress"),
-    }
-    if hit.get("rating"):
-        out["rating"], out["reviews"] = hit["rating"], hit.get("userRatingCount")
-    out["website"] = hit.get("websiteUri")
-    out["phone"] = hit.get("internationalPhoneNumber")
-    primary = (hit.get("primaryTypeDisplayName") or {}).get("text")
-    if primary:
-        out["categories"] = [primary]
-    if out.get("address"):
-        out["address"] = re.sub(r",\s*(Finland|Suomi)$", "", out["address"])
-    loc = hit.get("location") or {}
-    if place.lat is None and "latitude" in loc:
-        out["lat"], out["lng"] = loc["latitude"], loc["longitude"]
-    photos = hit.get("photos") or []
-    if photos:
-        photo = photos[0]
-        m = session.get(
-            f"https://places.googleapis.com/v1/{photo['name']}/media",
-            params={"maxWidthPx": 800, "key": key, "skipHttpRedirect": "true"},
-            timeout=TIMEOUT,
-        )
-        if m.ok and m.json().get("photoUri"):
-            out["image_url"] = m.json()["photoUri"]
-            authors = [a.get("displayName") for a in photo.get("authorAttributions", []) if a.get("displayName")]
-            if authors:
-                out["image_credit"] = ", ".join(authors)
-    return out
-
-
-# ---------------------------------------------------------------------------
 # OpenStreetMap Nominatim
 # ---------------------------------------------------------------------------
 
@@ -385,7 +322,7 @@ def city_from_address(address: str | None) -> str | None:
     return city.title() if city.isupper() else city
 
 
-def lookup(session: requests.Session, name: str, url: str, api_key: str | None = None) -> Place:
+def lookup(session: requests.Session, name: str, url: str) -> Place:
     """Run the whole chain for one restaurant. Never raises for network errors."""
     try:
         resolved = resolve_url(session, url)
@@ -404,12 +341,6 @@ def lookup(session: requests.Session, name: str, url: str, api_key: str | None =
                 used = True
         if used:
             place.sources.append(source)
-
-    if api_key:
-        try:
-            merge(fetch_places_api(session, api_key, place, name), "places-api")
-        except (requests.RequestException, ValueError, KeyError) as e:
-            log.warning("%s: Places API failed (%s)", name, e)
 
     if not place.address or not place.image_url:
         try:
