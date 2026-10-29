@@ -1,0 +1,84 @@
+name: Build and deploy site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "restaurants.csv"
+      - "scripts/**"
+      - "site/**"
+      - "requirements.txt"
+      - ".github/workflows/deploy.yml"
+  pull_request:
+    paths:
+      - "restaurants.csv"
+      - "scripts/**"
+      - "site/**"
+      - "tests/**"
+  schedule:
+    - cron: "17 3 * * 1" # Mondays: refresh details older than 30 days
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: "Look up every restaurant again, ignoring the cache"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -q tests
+
+      # Lookups and photos are cached between runs so only new links hit Google.
+      - name: Restore lookup cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: places-${{ github.run_id }}
+          restore-keys: places-
+
+      - name: Build site
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          python scripts/build.py ${{ inputs.refresh && '--refresh' || '' }}
+
+      - name: Upload site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

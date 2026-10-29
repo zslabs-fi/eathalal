@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EatHalal — halal restaurants in Finland</title>
+  <meta name="description" content="{{COUNT}} halal {{RESTAURANT_WORD}} in Finland, across {{CITY_PHRASE}}. Search by name or area, see them on a map, or find the closest one to you.">
+  <meta name="theme-color" content="#17483B">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="EatHalal — halal restaurants in Finland">
+  <meta property="og:description" content="{{COUNT}} halal {{RESTAURANT_WORD}} across {{CITY_PHRASE}}.">
+  <meta property="og:url" content="{{BASE_URL}}/">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <a class="skip" href="#results">Skip to restaurants</a>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <a class="brand" href="./" aria-label="EatHalal home">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 1L20.1 6.2L26.6 5.4L25.8 11.9L31 16L25.8 20.1L26.6 26.6L20.1 25.8L16 31L11.9 25.8L5.4 26.6L6.2 20.1L1 16L6.2 11.9L5.4 5.4L11.9 6.2Z"/></svg>
+        EatHalal
+      </a>
+      <h1>Halal food in Finland</h1>
+      <p class="hero-lede">{{COUNT}} {{RESTAURANT_WORD}} across {{CITY_PHRASE}}. Search by name or neighbourhood, or let us find the closest one.</p>
+
+      <form class="search" role="search" onsubmit="return false">
+        <label class="sr-only" for="q">Search restaurants</label>
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input id="q" type="search" placeholder="Restaurant, street or area" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="near" id="near" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <span>Near me</span>
+        </button>
+      </form>
+
+      <div class="chips" role="group" aria-label="Filter by city">
+{{CITY_CHIPS}}
+      </div>
+    </div>
+  </header>
+
+  <main id="results" class="results">
+    <div class="toolbar">
+      <p class="status" id="status" aria-live="polite">Showing all {{COUNT}} {{RESTAURANT_WORD}}</p>
+      <div class="view-toggle" role="group" aria-label="View">
+        <button type="button" data-view="list" aria-pressed="true">List</button>
+        <button type="button" data-view="map" aria-pressed="false">Map</button>
+      </div>
+    </div>
+
+    <div class="layout" data-view="list">
+      <ol class="cards" id="cards">
+{{CARDS}}
+      </ol>
+      <div class="empty" id="empty" hidden>
+        <p class="empty-title">No restaurants match that search.</p>
+        <p>Try a different spelling, or <button type="button" class="link" id="reset">show all restaurants</button>.</p>
+      </div>
+      <div class="map-wrap">
+        <div id="map" class="map" role="region" aria-label="Map of restaurants"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>Know a halal place we're missing? <a href="https://github.com/zslabs-fi/eathalal/issues/new?title=Add+restaurant:+&body=Name:%0AGoogle+Maps+link:">Suggest a restaurant</a>.</p>
+    <p class="footer-small">Listings are added by volunteers — please confirm halal status with the restaurant. Photos and addresses from Google Maps. Updated <time datetime="{{UPDATED_ISO}}">{{UPDATED}}</time>.</p>
+  </footer>
+
+  <script>window.RESTAURANTS = {{DATA_JSON}};</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin="anonymous" defer></script>
+  <script src="assets/app.js" defer></script>
+</body>
+</html>
