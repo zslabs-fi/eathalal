@@ -7,7 +7,6 @@ on:
       - "restaurants.csv"
       - "scripts/**"
       - "site/**"
-      - "requirements.txt"
       - ".github/workflows/deploy.yml"
   pull_request:
     paths:
@@ -15,6 +14,7 @@ on:
       - "scripts/**"
       - "site/**"
       - "tests/**"
+      - ".github/workflows/deploy.yml"
   schedule:
     - cron: "17 3 * * 1" # Mondays: refresh details older than 30 days
   workflow_dispatch:
@@ -40,13 +40,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-
+      # Each script declares its own dependencies; pipx installs them.
       - name: Run tests
-        run: python -m pytest -q tests
+        run: pipx run --python python scripts/test.py
 
       # Lookups and photos are cached between runs so only new links hit Google.
       - name: Restore lookup cache
@@ -60,7 +57,7 @@ jobs:
         env:
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
         run: |
-          python scripts/build.py ${{ inputs.refresh && '--refresh' || '' }}
+          pipx run --python python scripts/build.py ${{ inputs.refresh && '--refresh' || '' }}
 
       - name: Upload site
         if: github.event_name != 'pull_request'

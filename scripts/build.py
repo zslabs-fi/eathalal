@@ -33,7 +33,8 @@ import places  # noqa: E402
 import render  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-CACHE_MAX_AGE = 30 * 24 * 3600  # refresh lookups monthly
+CACHE_MAX_AGE = 30 * 24 * 3600  # refresh complete lookups monthly
+RETRY_AGE = 24 * 3600  # retry lookups that came back without an address or photo sooner
 CACHE_VERSION = 2  # bump when the cached fields change
 
 log = logging.getLogger("build")
@@ -110,6 +111,19 @@ def save_cache(path: Path, entries: dict) -> None:
     path.write_text(json.dumps({"version": CACHE_VERSION, "places": entries}, indent=1, ensure_ascii=False))
 
 
+def is_stale(entry: dict | None, now: float) -> bool:
+    """Complete entries last a month; ones missing an address or photo are retried after a day."""
+    if not entry:
+        return True
+    complete = entry.get("address") and entry.get("image_file")
+    return now - entry.get("fetched_at", 0) > (CACHE_MAX_AGE if complete else RETRY_AGE)
+
+
+def merge_lookup(old: dict | None, new: dict) -> dict:
+    """Layer a new lookup over the cached one, so a failed or partial lookup never wipes out details found earlier."""
+    return {**(old or {}), **{k: v for k, v in new.items() if v not in (None, "", [])}}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--csv", type=Path, default=ROOT / "restaurants.csv")
@@ -139,16 +153,17 @@ def main(argv: list[str] | None = None) -> int:
     for row in rows:
         url = row["url"]
         entry = cache.get(url)
-        stale = not entry or now - entry.get("fetched_at", 0) > CACHE_MAX_AGE
+        stale = is_stale(entry, now)
         if stale and not args.offline:
             log.info("Looking up %s", row["name"])
             p = places.lookup(session, row["name"], url)
-            entry = {**p.to_dict(), "fetched_at": now}
+            found = p.to_dict()
             # Download the photo now so the cache keeps a copy even if the URL expires.
             if p.image_url:
                 img_name = hashlib.sha1(p.image_url.encode()).hexdigest()[:16] + ".webp"
                 if (img_cache / img_name).exists() or places.download_image(session, p.image_url, img_cache / img_name):
-                    entry["image_file"] = img_name
+                    found["image_file"] = img_name
+            entry = {**merge_lookup(entry, found), "fetched_at": now}
         elif stale and args.offline and not entry:
             entry = places.parse_maps_url(url).to_dict()  # works for long URLs only
         new_cache[url] = entry

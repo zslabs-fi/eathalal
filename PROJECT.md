@@ -78,7 +78,8 @@ only the last resort.
 
 `.cache/` holds `places.json` (details per URL) and downloaded images. CI persists it
 with `actions/cache`, so a build only hits Google for new or changed links. Entries
-older than 30 days are refreshed. Changing a restaurant's URL in the CSV invalidates
+older than 30 days are refreshed; entries missing an address or photo are retried
+after a day, and a failed lookup never overwrites details found earlier. Changing a restaurant's URL in the CSV invalidates
 its entry.
 
 ### Frontend
@@ -132,11 +133,14 @@ tests/                       unit tests for URL parsing and CSV handling
 ## Running locally
 
 ```bash
-pip install -r requirements.txt
-python scripts/build.py            # full build, fetches from the internet
-python scripts/build.py --offline  # uses only the cache and CSV, no network
-python -m http.server -d _site 8000
+pipx run scripts/build.py            # full build, fetches from the internet
+pipx run scripts/build.py --offline  # uses only the cache and CSV, no network
+pipx run scripts/test.py             # run the tests
+python3 -m http.server -d _site 8000
 ```
+
+Dependencies are declared inline at the top of each script (PEP 723), and CI runs
+the same commands, so there are no requirements files to keep in sync.
 
 ## Risks
 

@@ -54,9 +54,14 @@
     const noun = shown === 1 ? "restaurant" : "restaurants";
     const where = state.city ? ` in ${state.city}` : "";
     const sort = state.me ? ", closest first" : "";
-    status.innerHTML = shown === data.length && !state.q
-      ? `Showing all <strong>${shown}</strong> ${noun}${sort}`
-      : `<strong>${shown}</strong> ${noun}${where}${sort}`;
+    // Built from nodes, not innerHTML: the city name comes from the data.
+    const count = document.createElement("strong");
+    count.textContent = shown;
+    status.replaceChildren(
+      shown === data.length && !state.q ? "Showing all " : "",
+      count,
+      shown === data.length && !state.q ? ` ${noun}${sort}` : ` ${noun}${where}${sort}`,
+    );
 
     map.update(visibleIds);
     syncUrl();
@@ -144,13 +149,19 @@
   // --------------------------------------------------------------------- map
 
   const map = (() => {
-    let m = null, markers = new Map(), meMarker = null, active = null, pending = null;
+    let m = null, markers = new Map(), meMarker = null, active = null, pending = null, pendingMe = null, tries = 0;
     const el = document.getElementById("map");
     const wide = window.matchMedia("(min-width: 1040px)");
 
+    // Only called while the map is visible, so Leaflet always measures a real size.
     function ensure() {
-      if (m) { m.invalidateSize(); return; }
-      if (!window.L) { setTimeout(ensure, 150); return; }
+      if (m) { m.invalidateSize(); update(pending); return; }
+      if (!window.L) {
+        // Give the CDN about 10 seconds, then stop polling.
+        if (++tries < 70) setTimeout(ensure, 150);
+        else el.textContent = "The map couldn't load. Check your connection and reload the page.";
+        return;
+      }
       m = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView([62.5, 25.5], 5);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
@@ -167,6 +178,7 @@
         mk.on("click", () => highlight(r.id, false));
         markers.set(r.id, mk);
       }
+      showMe(pendingMe);
       update(pending || new Set(data.map((r) => r.id)));
     }
 
@@ -193,8 +205,11 @@
       else if (pts.length) m.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 14 });
     }
 
+    // Remembered until the map exists; the map is not created here because on
+    // narrow screens it may be hidden, and Leaflet would lay out at zero size.
     function showMe(pos) {
-      if (!m) { ensure(); setTimeout(() => showMe(pos), 200); return; }
+      pendingMe = pos;
+      if (!m) return;
       if (meMarker) { meMarker.remove(); meMarker = null; }
       if (pos) {
         const icon = L.divIcon({ className: "", html: '<div class="pin pin-me"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });

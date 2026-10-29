@@ -94,6 +94,25 @@ def test_slugify():
     assert build.slugify("Kebab Äijä") == "kebab-aija"
 
 
+def test_failed_lookup_keeps_cached_details_and_retries_soon(tmp_path, monkeypatch):
+    url = "https://maps.app.goo.gl/x"
+    csv_file = tmp_path / "r.csv"
+    csv_file.write_text(f"Name,GoogleMapUrl\nA,{url}\n")
+    cache = tmp_path / "cache"
+    build.save_cache(cache / "places.json", {url: {"address": "Street 1, 00100 Helsinki", "lat": 60.1, "lng": 24.9, "fetched_at": 0}})
+    # Simulate Google being unreachable: only the URL itself comes back.
+    monkeypatch.setattr(places, "lookup", lambda session, name, u: places.Place(resolved_url=u, sources=["url"]))
+
+    assert build.main(["--csv", str(csv_file), "--cache", str(cache), "--out", str(tmp_path / "site")]) == 0
+
+    entry = build.load_cache(cache / "places.json")[url]
+    assert (entry["address"], entry["lat"], entry["lng"]) == ("Street 1, 00100 Helsinki", 60.1, 24.9)
+    # Still no photo, so the next build after a day tries again instead of waiting a month.
+    later = entry["fetched_at"] + build.RETRY_AGE + 1
+    assert build.is_stale(entry, later)
+    assert not build.is_stale({**entry, "image_file": "a.webp"}, later)
+
+
 class _Resp:
     def __init__(self, url, text="", status=200):
         self.url, self.text, self.status_code, self.ok = url, text, status, status < 400
