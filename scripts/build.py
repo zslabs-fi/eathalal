@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["requests>=2.31", "Pillow>=10.0"]
+# ///
 """Build the EatHalal site from restaurants.csv.
 
-    python scripts/build.py              # fetch new/stale details, render _site/
-    python scripts/build.py --offline    # no network: cache + CSV only
-    python scripts/build.py --refresh    # ignore the cache and look everything up again
+    pipx run scripts/build.py              # fetch new/stale details, render _site/
+    pipx run scripts/build.py --offline    # no network: cache + CSV only
+    pipx run scripts/build.py --refresh    # ignore the cache and look everything up again
+
+The dependencies are declared in the block above, so `pipx run` installs them
+into a temporary environment automatically. `python scripts/build.py` also works
+when requests and Pillow are already installed (as in CI).
 """
 from __future__ import annotations
 

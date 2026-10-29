@@ -85,16 +85,20 @@ manual run can re-check every restaurant with the **refresh** option.
 
 ## Running it locally
 
-Requires Python 3.10 or newer.
+Requires Python 3.10 or newer and [pipx](https://pipx.pypa.io/) 1.4 or newer.
+On macOS: `brew install pipx`. Elsewhere, see the pipx installation guide.
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest -q tests            # run the tests
-python scripts/build.py              # build into _site/ (needs internet)
-python -m http.server -d _site 8000  # then open http://localhost:8000
+pipx run scripts/build.py             # build into _site/ (needs internet)
+pipx run scripts/test.py              # run the tests
+python3 -m http.server -d _site 8000  # then open http://localhost:8000
 ```
 
-Other build options:
+There is nothing to install by hand. Each script lists its own dependencies at the
+top of the file, and `pipx run` sets them up in a temporary environment the first
+time (later runs reuse it). The last command only needs Python itself.
+
+Other build options, e.g. `pipx run scripts/build.py --offline`:
 
 | Option      | Effect                                              |
 |-------------|-----------------------------------------------------|
@@ -107,6 +111,7 @@ Other build options:
 ```
 restaurants.csv               the restaurant list
 scripts/build.py              build entry point
+scripts/test.py               runs the tests
 scripts/places.py             Google Maps and OpenStreetMap lookups
 scripts/render.py             writes the site into _site/
 site/index.html               page template
