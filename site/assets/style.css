@@ -181,6 +181,7 @@ a { color: inherit; }
   scroll-margin: 90px;
   transition: border-color .15s, box-shadow .15s;
 }
+.card[hidden] { display: none; }
 .card.is-active { border-color: var(--berry); box-shadow: 0 0 0 2px var(--berry); }
 
 .card-photo {
